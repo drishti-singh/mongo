@@ -1,0 +1,44 @@
+mongo:
+
+### Publisher Code (BLE to MQTT)
+import asyncio
+from bleak import BleakClient, BleakScanner
+import time
+import paho.mqtt.client as mqtt
+
+SERVICE_UUID = "12345678-1234-1234-1234-123456789012"
+CHARACTERISTIC_UUID = "87654321-4321-4321-4321-210987654321"
+
+# Function to publish MQTT messages
+def publish(message):
+    client = mqtt.Client()
+    client.connect("192.168.81.254", 1883, 60)
+
+    client.publish("test/topic", message)
+    print(f"Published message: {message}")
+
+    client.disconnect()
+
+async def main():
+    try:
+        devices = await BleakScanner.discover()
+        for device in devices:
+            if device.name == "ESP32_BLE_Client1":
+                print("Device recognized: ESP32_BLE_Client1")
+                async with BleakClient(device.address) as client:
+                    while True:
+                        # Read BLE data
+                        value = await client.read_gatt_char(CHARACTERISTIC_UUID)
+                        message = value.decode("utf-8")
+                        print(f"Received: {message}")
+
+                        # Publish data to MQTT broker
+                        publish(message)
+                        await asyncio.sleep(2)  # Adjust for your sensor's update rate
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+asyncio.run(main())
+
+
+
